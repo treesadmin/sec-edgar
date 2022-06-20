@@ -114,10 +114,7 @@ class ComboFilings:
 
     @start_date.setter
     def start_date(self, val):
-        if val:
-            self._start_date = val
-        else:
-            self._start_date = None
+        self._start_date = val or None
 
     @property
     def end_date(self):
@@ -162,39 +159,36 @@ class ComboFilings:
                 if current_start_quarter_date == current_date:
                     quarterly_date_list.append(
                         (current_year, current_quarter, lambda x: True))
-                    current_date = next_start_quarter_date
                 elif days_till_next_quarter > self.balancing_point:
                     quarterly_date_list.append(
                         (current_year, current_quarter,
                          lambda x: datetime.datetime.strptime(
                              x.date_filed, '%Y-%m-%d'
                          ).date() >= self.start_date))
-                    current_date = next_start_quarter_date
                 else:
                     daily_date_list.extend(fill_days(start=current_date,
                                                      end=next_start_quarter_date,
                                                      include_start=True,
                                                      include_end=False))
+                current_date = next_start_quarter_date
+            elif days_till_end > self.balancing_point:
+                if days_till_next_quarter - 1 == days_till_end:
+                    quarterly_date_list.append(
+                        (current_year, current_quarter, lambda x: True))
                     current_date = next_start_quarter_date
-            else:
-                if days_till_end > self.balancing_point:
-                    if days_till_next_quarter - 1 == days_till_end:
-                        quarterly_date_list.append(
-                            (current_year, current_quarter, lambda x: True))
-                        current_date = next_start_quarter_date
-                    else:
-                        quarterly_date_list.append(
-                            (current_year, current_quarter,
-                             lambda x: datetime.datetime.strptime(
-                                 x.date_filed, '%Y-%m-%d'
-                             ).date() <= self.end_date))
-                        current_date = self.end_date
                 else:
-                    daily_date_list.extend(fill_days(start=current_date,
-                                                     end=self.end_date,
-                                                     include_start=True,
-                                                     include_end=True))
-                    break
+                    quarterly_date_list.append(
+                        (current_year, current_quarter,
+                         lambda x: datetime.datetime.strptime(
+                             x.date_filed, '%Y-%m-%d'
+                         ).date() <= self.end_date))
+                    current_date = self.end_date
+            else:
+                daily_date_list.extend(fill_days(start=current_date,
+                                                 end=self.end_date,
+                                                 include_start=True,
+                                                 include_end=True))
+                break
         return quarterly_date_list, daily_date_list
 
     @property

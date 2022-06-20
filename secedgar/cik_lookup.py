@@ -52,10 +52,9 @@ class CIKLookup:
     def __init__(self, lookups, client, **kwargs):
         if lookups and isinstance(lookups, str):
             self._lookups = [lookups]  # make single string into list
+        elif not lookups or any(type(o) is not str for o in lookups):
+            raise TypeError("CIKs must be given as string or iterable.")
         else:
-            # Check that iterable only contains strings and is not empty
-            if not (lookups and all(type(o) is str for o in lookups)):
-                raise TypeError("CIKs must be given as string or iterable.")
             self._lookups = lookups
         self._params = {}
         self._client = client or NetworkClient(**kwargs)

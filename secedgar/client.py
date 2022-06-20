@@ -200,9 +200,9 @@ class NetworkClient:
                           raise_on_status=True)
             session.mount(self._BASE, adapter=HTTPAdapter(max_retries=retry))
             session.hooks["response"].append(self._validate_response)
-            response = session.get(prepared_url, params=params,
-                                   headers=headers, **kwargs)
-            return response
+            return session.get(
+                prepared_url, params=params, headers=headers, **kwargs
+            )
 
     def get_soup(self, path, params, **kwargs):
         """Return BeautifulSoup object from response text. Uses lxml parser.

@@ -51,12 +51,11 @@ class MockSingleCIKFilingLimitedResponses:
         self._num_responses = num_responses
 
     def __call__(self, *args):
-        if self._called_count * 10 < self._num_responses:
-            self._called_count += 1
-            return MockResponse(
-                datapath_args=["filings", "aapl_10q_filings.xml"])
-        else:
+        if self._called_count * 10 >= self._num_responses:
             return MockResponse(content=bytes("", "utf-8"))
+        self._called_count += 1
+        return MockResponse(
+            datapath_args=["filings", "aapl_10q_filings.xml"])
 
 
 # FIXME: This may not be working as expected. Need to look into this more.
@@ -347,7 +346,6 @@ class TestCompanyFilings:
                                                     (30, True),
                                                     (40, True)])
     @pytest.mark.filterwarnings("ignore::DeprecationWarning")
-    # For collections.abc warning 3.8+
     def test_filings_warning_lt_count(self, recwarn, count, raises_error,
                                       tmp_data_directory,
                                       mock_user_agent,
@@ -366,11 +364,8 @@ class TestCompanyFilings:
             try:
                 w = recwarn.pop(UserWarning)
                 # Allow XMLParsedAsHTMLWarning, but don't allow others
-                if w and w._category_name == "XMLParsedAsHTMLWarning":
-                    pass
-                else:
+                if not w or w._category_name != "XMLParsedAsHTMLWarning":
                     pytest.fail("Expected no UserWarning, but received one.")
-            # Should raise assertion error since no UserWarning should be found
             except AssertionError:
                 pass
 
@@ -392,7 +387,7 @@ class TestCompanyFilings:
         data = f.client.get_soup("", {})  # Get mock data from mock_single_cik_filing
         links = f._filter_filing_links(data)
         assert len(links) == 10
-        assert all(["BAD_LINK" not in link for link in links])
+        assert all("BAD_LINK" not in link for link in links)
 
     def test_same_urls_fetched(self, mock_user_agent, mock_single_cik_filing):
         # mock_single_filing_cik has more than 10 URLs

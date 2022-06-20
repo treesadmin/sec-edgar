@@ -131,15 +131,14 @@ class IndexFilings(AbstractFiling):
                 is found.
         """
         if self._master_idx_file is None or update_cache:
-            if self.idx_filename in self._get_listings_directory().text:
-                master_idx_url = "{path}{filename}".format(
-                    path=self.path, filename=self.idx_filename)
-                self._master_idx_file = self.client.get_response(
-                    master_idx_url, self.params, **kwargs).text
-            else:
+            if self.idx_filename not in self._get_listings_directory().text:
                 raise EDGARQueryError("""File {filename} not found.
                                      There may be no filings for the given day/quarter."""
                                       .format(filename=self.idx_filename))
+            master_idx_url = "{path}{filename}".format(
+                path=self.path, filename=self.idx_filename)
+            self._master_idx_file = self.client.get_response(
+                master_idx_url, self.params, **kwargs).text
         return self._master_idx_file
 
     def get_filings_dict(self, **kwargs):
@@ -283,13 +282,13 @@ class IndexFilings(AbstractFiling):
 
         (_, _, extracted_files) = next(os.walk(extract_directory))
 
+        possible_endings = ('nc', 'corr04', 'corr03', 'corr02', 'corr01')
         for link in link_list:
             link_cik = link.split('/')[-2]
             link_accession = self.get_accession_number(link)
             filepath = link_accession.split('.')[0]
-            possible_endings = ('nc', 'corr04', 'corr03', 'corr02', 'corr01')
             for ending in possible_endings:
-                full_filepath = filepath + '.' + ending
+                full_filepath = f'{filepath}.{ending}'
                 # If the filepath is found, move it to the correct path
                 if full_filepath in extracted_files:
 

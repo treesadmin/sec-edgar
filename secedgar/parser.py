@@ -95,7 +95,7 @@ class MetaParser:
             documents = sec_doc[metadata_cursor:].strip()
             doc_count = documents.count("<DOCUMENT>")
             doc_cursor = 0
-            for doc_num in range(doc_count):
+            for _ in range(doc_count):
                 doc_match = self.re_doc.search(documents, pos=doc_cursor)
                 if not sec_doc_match:
                     break
@@ -117,14 +117,14 @@ class MetaParser:
                 is_uuencoded = doc_txt.find("begin 644 ") != -1
 
                 if is_uuencoded:
-                    logging.info("{} contains an uu-encoded file".format(infile))
-                    encfn = doc_outfile + ".uu"
+                    logging.info(f"{infile} contains an uu-encoded file")
+                    encfn = f"{doc_outfile}.uu"
                     with open(encfn, "w", encoding="utf8") as encfh:
                         encfh.write(doc_txt)
                     uu.decode(encfn, doc_outfile)
                     os.remove(encfn)
                 else:
-                    logging.info("{} contains an non uu-encoded file".format(infile))
+                    logging.info(f"{infile} contains an non uu-encoded file")
                     with open(doc_outfile, "w", encoding="utf8") as outfh:
                         outfh.write(doc_txt)
 
@@ -152,7 +152,7 @@ class MetaParser:
 
         for line in curr_doc.split("\n"):
 
-            logging.debug("Line: '{}'".format(line))
+            logging.debug(f"Line: '{line}'")
 
             if "<ACCEPTANCE-DATETIME>" in line:
                 out_dict["acceptance-datetime"] = \
@@ -163,51 +163,35 @@ class MetaParser:
                 out_dict["description"] = line[len("<DESCRIPTION>"):]
                 continue
 
-            # e.g. "CONFORMED SUBMISSION TYPE:	8-K"
-            # *+ -> possessive quantifier
-            m = re.match(r"^(\w.*):\t*([^\t]+)$", line)
-            if m:
+            if m := re.match(r"^(\w.*):\t*([^\t]+)$", line):
                 logging.debug("Match A:B")
-                out_dict[m.group(1).replace(" ", "_")] = m.group(2)
+                out_dict[m[1].replace(" ", "_")] = m[2]
                 continue
 
-            # Level 1 header
-            # Headers have 1 initial tab less than data
-            m = re.match("^(?!\t)(.+):\t*$", line)
-            if m:
-                levels[0] = m.group(1).replace(" ", "_")
+            if m := re.match("^(?!\t)(.+):\t*$", line):
+                levels[0] = m[1].replace(" ", "_")
                 levels[1] = None
                 if levels[0] not in out_dict:
-                    out_dict[levels[0]] = dict()
-                    logging.debug("Creating level 1 header {}"
-                                  .format(levels[0]))
+                    out_dict[levels[0]] = {}
+                    logging.debug(f"Creating level 1 header {levels[0]}")
                 continue
 
-            # Level 2 header (must be before the data for correct matching)
-            # In fact "level 1 data" match this too
-            m = re.match("^\t(.+):\t*$", line)
-            if m:
-                levels[1] = m.group(1).replace(" ", "_")
+            if m := re.match("^\t(.+):\t*$", line):
+                levels[1] = m[1].replace(" ", "_")
                 if levels[1] not in out_dict[levels[0]]:
                     out_dict[levels[0]][levels[1]] = {}
-                    logging.debug("Creating level 2 header {}"
-                                  .format(levels[1]))
+                    logging.debug(f"Creating level 2 header {levels[1]}")
                 continue
 
-            # Level 1 data
-            m = re.match("^\t(?!\t)(.+):\t*(.+)$", line)
-            if m:
-                out_dict[levels[0]][m.group(1)] = m.group(2)
-                logging.debug("Level 1 data. Levels[0]={}; group={}"
-                              .format(levels[0], m.group(1)))
+            if m := re.match("^\t(?!\t)(.+):\t*(.+)$", line):
+                out_dict[levels[0]][m[1]] = m[2]
+                logging.debug(f"Level 1 data. Levels[0]={levels[0]}; group={m[1]}")
                 continue
 
-            # Level 2 data
-            m = re.match("^\t\t(.+):\t*(.+)$", line)
-            if m:
+            if m := re.match("^\t\t(.+):\t*(.+)$", line):
                 logging.debug("Level 2 data")
-                key = m.group(1).replace(" ", "_")
-                out_dict[levels[0]][levels[1]][key] = m.group(2)
+                key = m[1].replace(" ", "_")
+                out_dict[levels[0]][levels[1]][key] = m[2]
                 continue
 
         return out_dict
@@ -225,19 +209,15 @@ class MetaParser:
         """
         metadata_doc = {}
 
-        # Document type
-        type_m = re.search("<TYPE>(.*?)\n", doc)
-        if type_m:
-            metadata_doc["type"] = type_m.group(1)
+        if type_m := re.search("<TYPE>(.*?)\n", doc):
+            metadata_doc["type"] = type_m[1]
 
-        # Document sequence
-        seq_m = re.search("<SEQUENCE>(.*?)\n", doc)
-        if seq_m:
-            metadata_doc["sequence"] = seq_m.group(1)
+        if seq_m := re.search("<SEQUENCE>(.*?)\n", doc):
+            metadata_doc["sequence"] = seq_m[1]
 
         # Document filename
         fn_m = re.search("<FILENAME>(.*?)\n", doc)
-        metadata_doc["filename"] = fn_m.group(1)
+        metadata_doc["filename"] = fn_m[1]
 
         return metadata_doc
 
@@ -267,11 +247,10 @@ class F4Parser:
         if metadata["type"] == "4":
             # Regex find all nested values.
             def nested_findall(parent_pattern, doc, child_pattern=value_pattern):
-                matches = [
-                    re.search(child_pattern, match).group(1)
-                    for match
-                    in re.findall(parent_pattern, doc, re.S)]
-                return matches
+                return [
+                    re.search(child_pattern, match)[1]
+                    for match in re.findall(parent_pattern, doc, re.S)
+                ]
 
             # Find core data from document.
             security_title_matches = nested_findall(sec_title_pattern, doc)

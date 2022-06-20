@@ -95,8 +95,11 @@ class QuarterlyFilings(IndexFilings):
     def _get_tar_urls(self):
         """The list of .tar.gz daily files in the current quarter."""
         soup = self.client.get_soup(self.tar_path, {})
-        files = [a.get('href') for a in soup.find_all('a') if "nc.tar.gz" in a.get('href')]
-        return files
+        return [
+            a.get('href')
+            for a in soup.find_all('a')
+            if "nc.tar.gz" in a.get('href')
+        ]
 
     def save(self,
              directory,
